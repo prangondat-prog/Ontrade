@@ -11,6 +11,7 @@ import {
 } from './types.js';
 import { AssetLogo } from './components/AssetLogo.tsx';
 import { AITradeHubModal } from './components/AITradeHubModal.tsx';
+import { fetchMarketsClient, fetchPredictionClient } from './services/apiClient.js';
 import {
   TrendingUp,
   TrendingDown,
@@ -21,62 +22,65 @@ import {
   DollarSign
 } from 'lucide-react';
 
+const INITIAL_MARKETS: MarketAsset[] = [
+  { symbol: 'BTC/USD', name: 'Bitcoin', category: 'crypto', sector: 'Crypto', region: 'Global', price: 75200.50, change24h: 1840.20, change24hPercent: 2.51, high24h: 76100.00, low24h: 73800.00, volume24h: '34.2B', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'ETH/USD', name: 'Ethereum', category: 'crypto', sector: 'Crypto', region: 'Global', price: 2840.10, change24h: -45.30, change24hPercent: -1.57, high24h: 2910.00, low24h: 2810.00, volume24h: '18.5B', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'SOL/USD', name: 'Solana', category: 'crypto', sector: 'Crypto', region: 'Global', price: 194.80, change24h: 8.40, change24hPercent: 4.50, high24h: 198.50, low24h: 185.20, volume24h: '4.8B', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'AAPL', name: 'Apple Inc.', category: 'stock', sector: 'Tech', region: 'USA', price: 235.40, change24h: 3.10, change24hPercent: 1.33, high24h: 237.00, low24h: 232.10, volume24h: '48.2M', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'MSFT', name: 'Microsoft Corporation', category: 'stock', sector: 'Tech', region: 'USA', price: 422.50, change24h: 5.20, change24hPercent: 1.25, high24h: 425.00, low24h: 418.00, volume24h: '22.1M', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'NVDA', name: 'NVIDIA Corporation', category: 'stock', sector: 'Tech', region: 'USA', price: 145.80, change24h: 6.40, change24hPercent: 4.59, high24h: 147.20, low24h: 139.50, volume24h: '85.4M', currency: 'USD', precision: 2, lastUpdated: '12:00:00 PM' },
+  { symbol: 'GOLD', name: 'Gold (XAU/USD)', category: 'commodity', sector: 'Commodity', region: 'Global', price: 2685.40, change24h: 14.50, change24hPercent: 0.54, high24h: 2695.00, low24h: 2670.00, volume24h: '12.4B', currency: 'USD', precision: 2, unit: 'oz', lastUpdated: '12:00:00 PM' },
+  { symbol: 'EUR/USD', name: 'Euro / US Dollar', category: 'forex', sector: 'Forex', region: 'Europe/USA', price: 1.0845, change24h: -0.0012, change24hPercent: -0.11, high24h: 1.0880, low24h: 1.0830, volume24h: '45B', currency: 'USD', precision: 4, lastUpdated: '12:00:00 PM' },
+];
+
 export default function App() {
-  const [markets, setMarkets] = useState<MarketAsset[]>([]);
+  const [markets, setMarkets] = useState<MarketAsset[]>(INITIAL_MARKETS);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC/USD');
   const [userTrades, setUserTrades] = useState<UserTrade[]>([]);
   const [activeStudies] = useState<string[]>(['BOL', 'RSI']);
   const [isDemoTrade, setIsDemoTrade] = useState<boolean>(true);
   const [tradeAmount, setTradeAmount] = useState<number>(500);
   const [prediction, setPrediction] = useState<BrainPrediction | null>(null);
-  const [isLoadingMarkets, setIsLoadingMarkets] = useState<boolean>(true);
   const [isLoadingPrediction, setIsLoadingPrediction] = useState<boolean>(false);
   const [orderFeedback, setOrderFeedback] = useState<string | null>(null);
+  const [isAITradeHubOpen, setIsAITradeHubOpen] = useState<boolean>(false);
 
   const activeAsset = useMemo(() => 
     markets.find((m) => m.symbol === selectedSymbol) || markets[0], 
     [markets, selectedSymbol]
   );
 
-  const loadMarkets = useCallback(async (isInitial: boolean = false) => {
+  const loadMarkets = useCallback(async () => {
     try {
-      if (isInitial) setIsLoadingMarkets(true);
-      const res = await fetch('/api/markets');
-      if (!res.ok) throw new Error('Failed to load market data');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
-        setMarkets(data.data);
+      const data = await fetchMarketsClient();
+      if (Array.isArray(data) && data.length > 0) {
+        setMarkets(data);
       }
     } catch (err) {
       console.error('Markets fetch error:', err);
-    } finally {
-      if (isInitial) setIsLoadingMarkets(false);
     }
   }, []);
 
   const loadPrediction = useCallback(async (symbol: string) => {
     try {
-      setIsLoadingPrediction(true);
-      const res = await fetch('/api/brain/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol }),
-      });
-      if (!res.ok) throw new Error('Failed to load prediction');
-      const data = await res.json();
-      if (data.success && data.prediction) {
-        setPrediction(data.prediction);
+      if (!prediction) {
+        setIsLoadingPrediction(true);
+      }
+      const currentPr = markets.find(m => m.symbol === symbol)?.price || 75000;
+      const pred = await fetchPredictionClient(symbol, currentPr);
+      if (pred) {
+        setPrediction(pred);
       }
     } catch (err) {
       console.error('Prediction fetch error:', err);
     } finally {
       setIsLoadingPrediction(false);
     }
-  }, []);
+  }, [markets, prediction]);
 
   useEffect(() => {
-    loadMarkets(true);
-    const timer = setInterval(() => loadMarkets(false), 800);
+    loadMarkets();
+    const timer = setInterval(() => loadMarkets(), 800);
     return () => clearInterval(timer);
   }, [loadMarkets]);
 
@@ -95,10 +99,8 @@ export default function App() {
   useEffect(() => {
     if (selectedSymbol) {
       loadPrediction(selectedSymbol);
-      const pTimer = setInterval(() => loadPrediction(selectedSymbol), 25000);
-      return () => clearInterval(pTimer);
     }
-  }, [selectedSymbol, loadPrediction]);
+  }, [selectedSymbol]);
 
   const handleAction = (type: 'LONG' | 'SHORT' | 'BUY' | 'SELL') => {
     if (!activeAsset) return;
@@ -146,15 +148,7 @@ export default function App() {
     return sym;
   };
 
-  if (isLoadingMarkets || !activeAsset) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  const isPriceUp = activeAsset.change24hPercent >= 0;
+  const isPriceUp = activeAsset ? activeAsset.change24hPercent >= 0 : true;
 
   return (
     <div className="bg-black text-white antialiased min-h-screen flex flex-col font-sans selection:bg-emerald-400 selection:text-black">
@@ -181,7 +175,7 @@ export default function App() {
                   <h1 className="text-3xl font-black tracking-tighter uppercase">{selectedSymbol.split('/')[0]}</h1>
                   <ShieldCheck className="w-5 h-5 text-blue-500" />
                 </div>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{activeAsset.name} ({activeAsset.category})</p>
+                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{activeAsset?.name} ({activeAsset?.category})</p>
               </div>
             </div>
           </div>
@@ -204,11 +198,11 @@ export default function App() {
             {/* Price Overview - Always White */}
             <div className="flex items-baseline gap-4">
               <span className="text-6xl font-black tracking-tighter tabular-nums text-white">
-                ${activeAsset.price.toLocaleString(undefined, { minimumFractionDigits: activeAsset.precision })}
+                ${activeAsset?.price.toLocaleString(undefined, { minimumFractionDigits: activeAsset?.precision || 2 })}
               </span>
               <div className="flex flex-col">
                 <span className={`text-lg font-black font-mono ${isPriceUp ? 'text-emerald-400' : 'text-rose-500'}`}>
-                  {isPriceUp ? '▲' : '▼'} {Math.abs(activeAsset.change24hPercent).toFixed(2)}%
+                  {isPriceUp ? '▲' : '▼'} {Math.abs(activeAsset?.change24hPercent || 0).toFixed(2)}%
                 </span>
                 <div className="flex items-center gap-1">
                    <div className={`w-2 h-2 rounded-full animate-pulse ${priceTickDir === 'UP' ? 'bg-emerald-500' : priceTickDir === 'DOWN' ? 'bg-rose-500' : 'bg-neutral-800'}`}></div>
@@ -296,7 +290,7 @@ export default function App() {
             <div className="p-6 bg-neutral-900/50 rounded-2xl border border-neutral-800 space-y-5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400">Position Amount ($)</h3>
-                <span className="text-xs font-mono text-emerald-400 font-bold">{(tradeAmount / activeAsset.price).toFixed(4)} {selectedSymbol.split('/')[0]}</span>
+                <span className="text-xs font-mono text-emerald-400 font-bold">{(tradeAmount / (activeAsset?.price || 1)).toFixed(4)} {selectedSymbol.split('/')[0]}</span>
               </div>
 
               {/* Amount Selector Buttons */}
@@ -400,6 +394,14 @@ export default function App() {
            <span>© 2026 Onpiks Terminal</span>
         </div>
       </footer>
+
+      <AITradeHubModal
+        isOpen={isAITradeHubOpen}
+        onClose={() => setIsAITradeHubOpen(false)}
+        markets={markets}
+        initialSymbol={selectedSymbol}
+        onSelectSymbol={setSelectedSymbol}
+      />
     </div>
   );
 }
