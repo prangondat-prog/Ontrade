@@ -36,6 +36,7 @@ const INITIAL_MARKETS: MarketAsset[] = [
 export default function App() {
   const [markets, setMarkets] = useState<MarketAsset[]>(INITIAL_MARKETS);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('BTC/USD');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [userTrades, setUserTrades] = useState<UserTrade[]>([]);
   const [activeStudies] = useState<string[]>(['BOL', 'RSI']);
   const [isDemoTrade, setIsDemoTrade] = useState<boolean>(true);
@@ -49,6 +50,11 @@ export default function App() {
     markets.find((m) => m.symbol === selectedSymbol) || markets[0], 
     [markets, selectedSymbol]
   );
+
+  const filteredMarkets = useMemo(() => {
+    if (selectedCategory === 'all') return markets;
+    return markets.filter(m => m.category === selectedCategory);
+  }, [markets, selectedCategory]);
 
   const loadMarkets = useCallback(async () => {
     try {
@@ -160,27 +166,27 @@ export default function App() {
         </div>
       )}
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 pb-20">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-6 pb-20">
         
         {/* Navigation & Asset Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-6">
-            <button className="text-neutral-500 hover:text-white transition-colors cursor-pointer">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <button className="text-neutral-500 hover:text-white transition-colors cursor-pointer hidden sm:block">
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <div className="flex items-center gap-4">
-              <AssetLogo symbol={selectedSymbol} size="lg" />
+            <div className="flex items-center gap-3">
+              <AssetLogo symbol={selectedSymbol} size="md" />
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-black tracking-tighter uppercase">{selectedSymbol.split('/')[0]}</h1>
-                  <ShieldCheck className="w-5 h-5 text-blue-500" />
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase">{selectedSymbol.split('/')[0]}</h1>
+                  <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
                 </div>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">{activeAsset?.name} ({activeAsset?.category})</p>
+                <p className="text-[10px] sm:text-xs font-bold text-neutral-500 uppercase tracking-widest">{activeAsset?.name} ({activeAsset?.category})</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-3">
              <button 
               onClick={() => setIsDemoTrade(!isDemoTrade)}
               className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all cursor-pointer ${isDemoTrade ? 'border-amber-500/30 text-amber-500 bg-amber-500/5' : 'border-emerald-500/30 text-emerald-500 bg-emerald-500/5'}`}
@@ -190,29 +196,32 @@ export default function App() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Left Column: Data & Chart */}
           <div className="lg:col-span-8 space-y-6">
             
             {/* Price Overview - Always White */}
-            <div className="flex items-baseline gap-4">
-              <span className="text-6xl font-black tracking-tighter tabular-nums text-white">
-                ${activeAsset?.price.toLocaleString(undefined, { minimumFractionDigits: activeAsset?.precision || 2 })}
-              </span>
-              <div className="flex flex-col">
-                <span className={`text-lg font-black font-mono ${isPriceUp ? 'text-emerald-400' : 'text-rose-500'}`}>
+            <div className="flex flex-wrap items-baseline justify-between sm:justify-start gap-4 bg-neutral-900/40 p-4 rounded-2xl border border-neutral-800">
+              <div>
+                <span className="text-3xl sm:text-5xl font-black tracking-tighter tabular-nums text-white block">
+                  ${activeAsset?.price.toLocaleString(undefined, { minimumFractionDigits: activeAsset?.precision || 2 })}
+                </span>
+                <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Real-time Spot Quote</span>
+              </div>
+              <div className="flex flex-col items-end sm:items-start">
+                <span className={`text-base sm:text-lg font-black font-mono ${isPriceUp ? 'text-emerald-400' : 'text-rose-500'}`}>
                   {isPriceUp ? '▲' : '▼'} {Math.abs(activeAsset?.change24hPercent || 0).toFixed(2)}%
                 </span>
                 <div className="flex items-center gap-1">
                    <div className={`w-2 h-2 rounded-full animate-pulse ${priceTickDir === 'UP' ? 'bg-emerald-500' : priceTickDir === 'DOWN' ? 'bg-rose-500' : 'bg-neutral-800'}`}></div>
-                   <span className="text-[8px] font-black text-neutral-600 uppercase tracking-widest">Live Tick</span>
+                   <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">Live Tick</span>
                 </div>
               </div>
             </div>
 
             {/* Pressure Bar */}
-            <div className="space-y-2">
+            <div className="space-y-2 px-1">
               <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-neutral-500">
                 <span className="text-emerald-400">Demand: {isPriceUp ? 58 : 42}%</span>
                 <span className="text-rose-500">Distribution: {isPriceUp ? 42 : 58}%</span>
@@ -223,71 +232,75 @@ export default function App() {
               </div>
             </div>
 
-            {/* TradingView Chart - Real Mapped Symbols */}
-            <div className="w-full aspect-[9/16] lg:aspect-video bg-neutral-950 border border-neutral-900 overflow-hidden relative group">
+            {/* TradingView Chart - Responsive Height for Mobile with Brand Mask */}
+            <div className="w-full h-[380px] sm:h-[500px] bg-neutral-950 border border-neutral-900 overflow-hidden relative rounded-2xl">
               <iframe
                 key={selectedSymbol}
                 title="TradingView Chart"
-                src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_762c4&symbol=${encodeURIComponent(getTradingViewSymbol(selectedSymbol, activeAsset))}&interval=1&hidesidetoolbar=1&hidetoptoolbar=1&symboledit=0&saveimage=0&toolbarbg=000000&theme=dark&style=1&timezone=Etc%2FUTC&studies=${getStudiesParam()}&locale=en&utm_source=onpiks.com&allow_symbol_change=0`}
+                src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_762c4&symbol=${encodeURIComponent(getTradingViewSymbol(selectedSymbol, activeAsset))}&interval=1&hidesidetoolbar=1&hidetoptoolbar=1&symboledit=0&saveimage=0&toolbarbg=000000&theme=dark&style=1&timezone=Etc%2FUTC&studies=${getStudiesParam()}&locale=en&utm_source=onpiks.com&allow_symbol_change=0&hideideas=1&show_popup_button=0&enable_publishing=0`}
                 width="100%"
                 height="100%"
                 frameBorder="0"
                 scrolling="no"
               />
+              {/* Brand Watermark Mask Overlay */}
+              <div className="absolute bottom-0 left-0 h-7 w-36 bg-neutral-950 pointer-events-none z-10"></div>
             </div>
 
-            {/* SIGNAL BOX AREA - Skeleton Loading & Profit UI */}
+            {/* SIGNAL BOX AREA - Responsive Stack */}
             {isLoadingPrediction ? (
-              <div className="p-8 bg-neutral-900/50 rounded-2xl border border-white/5 animate-pulse flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <div className="w-14 h-14 bg-neutral-800 rounded-xl"></div>
-                  <div className="space-y-3">
-                    <div className="h-6 w-32 bg-neutral-800 rounded"></div>
-                    <div className="h-3 w-48 bg-neutral-800 rounded"></div>
+              <div className="p-6 bg-neutral-900/50 rounded-2xl border border-white/5 animate-pulse flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-neutral-800 rounded-xl shrink-0"></div>
+                  <div className="space-y-2">
+                    <div className="h-5 w-28 bg-neutral-800 rounded"></div>
+                    <div className="h-3 w-40 bg-neutral-800 rounded"></div>
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-right">
                    <div className="h-2 w-16 bg-neutral-800 rounded ml-auto"></div>
-                   <div className="h-6 w-24 bg-neutral-800 rounded"></div>
+                   <div className="h-5 w-20 bg-neutral-800 rounded ml-auto"></div>
                 </div>
               </div>
             ) : prediction ? (
-              <div className={`p-6 rounded-3xl flex items-center justify-between border-2 shadow-2xl transition-all duration-500 ${prediction.direction === 'UP' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
-                <div className="flex items-center gap-6">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${prediction.direction === 'UP' ? 'bg-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.3)]' : 'bg-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.3)]'}`}>
-                    {prediction.direction === 'UP' ? <TrendingUp className="w-8 h-8 text-black" /> : <TrendingDown className="w-8 h-8 text-white" />}
+              <div className={`p-5 sm:p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-2 shadow-2xl transition-all duration-500 ${prediction.direction === 'UP' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-rose-500/20 bg-rose-500/5'}`}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${prediction.direction === 'UP' ? 'bg-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.3)]' : 'bg-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.3)]'}`}>
+                    {prediction.direction === 'UP' ? <TrendingUp className="w-6 h-6 text-black" /> : <TrendingDown className="w-6 h-6 text-white" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                        <span className={`w-2 h-2 rounded-full animate-pulse ${prediction.direction === 'UP' ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                       <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">AI Signal Analysis</span>
+                       <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">AI Signal Analysis</span>
                     </div>
-                    <h2 className="text-3xl font-black uppercase tracking-tighter text-white">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
                       {prediction.direction === 'UP' ? 'BUY SIGNAL' : 'SELL SIGNAL'}
                     </h2>
-                    <div className="flex items-center gap-3 mt-1">
-                       <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Conf: {prediction.confidence}</span>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Conf: {prediction.confidence}</span>
                        <span className="w-1 h-1 rounded-full bg-neutral-700"></span>
-                       <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Expected Profit: +{Math.abs(prediction.predictedCandle.predictedChangePercent).toFixed(2)}%</span>
+                       <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Expected: +{Math.abs(prediction.predictedCandle.predictedChangePercent).toFixed(2)}%</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Profit Projection</p>
-                  <p className="text-2xl font-black font-mono text-white tabular-nums">
-                    +${(tradeAmount * (Math.abs(prediction.predictedCandle.predictedChangePercent) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </p>
-                  <div className="text-[9px] font-bold text-neutral-600 uppercase tracking-tighter mt-1">For ${tradeAmount} Position</div>
+                <div className="sm:text-right pt-3 sm:pt-0 border-t sm:border-t-0 border-white/10 flex sm:flex-col justify-between items-center sm:items-end">
+                  <p className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Profit Projection</p>
+                  <div>
+                    <p className="text-xl sm:text-2xl font-black font-mono text-white tabular-nums">
+                      +${(tradeAmount * (Math.abs(prediction.predictedCandle.predictedChangePercent) / 100)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                    <div className="text-[8px] font-bold text-neutral-500 uppercase tracking-tighter">For ${tradeAmount} Position</div>
+                  </div>
                 </div>
               </div>
             ) : null}
           </div>
 
           {/* Right Column: Actions & Watchlist */}
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-4 space-y-6">
             
             {/* Instant Execution & Amount Selector */}
-            <div className="p-6 bg-neutral-900/50 rounded-2xl border border-neutral-800 space-y-5">
+            <div className="p-5 sm:p-6 bg-neutral-900/50 rounded-2xl border border-neutral-800 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400">Position Amount ($)</h3>
                 <span className="text-xs font-mono text-emerald-400 font-bold">{(tradeAmount / (activeAsset?.price || 1)).toFixed(4)} {selectedSymbol.split('/')[0]}</span>
@@ -318,42 +331,56 @@ export default function App() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-6 pt-2">
+              <div className="grid grid-cols-2 gap-4 pt-1">
                 <button 
                   onClick={() => handleAction('BUY')}
-                  className="p-6 bg-white hover:bg-neutral-200 text-black font-black text-lg uppercase tracking-[0.25em] rounded-[2rem] transition-all active:scale-95 flex items-center justify-center gap-4 cursor-pointer shadow-2xl border border-white/20"
+                  className="py-4 px-4 bg-white hover:bg-neutral-200 text-black font-black text-base sm:text-lg uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer shadow-2xl border border-white/20"
                 >
-                  <TrendingUp className="w-6 h-6" />
+                  <TrendingUp className="w-5 h-5" />
                   BUY
                 </button>
                 <button 
                   onClick={() => handleAction('SELL')}
-                  className="p-6 bg-black hover:bg-neutral-900 text-white font-black text-lg uppercase tracking-[0.25em] rounded-[2rem] transition-all active:scale-95 flex items-center justify-center gap-4 cursor-pointer shadow-2xl border border-white/10"
+                  className="py-4 px-4 bg-black hover:bg-neutral-900 text-white font-black text-base sm:text-lg uppercase tracking-[0.2em] rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-3 cursor-pointer shadow-2xl border border-white/10"
                 >
-                  <TrendingDown className="w-6 h-6" />
+                  <TrendingDown className="w-5 h-5" />
                   SELL
                 </button>
               </div>
             </div>
 
-            {/* Asset Pulse Watchlist */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-neutral-500 px-2">
+            {/* Asset Pulse Watchlist with Category Filter Tabs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-neutral-500 px-1">
                 <div className="flex items-center gap-2">
                   <Search className="w-3 h-3" />
                   <span>Market Pulse</span>
                 </div>
-                <span>{markets.length} Assets</span>
+                <span>{filteredMarkets.length} Assets</span>
               </div>
-              <div className="space-y-2">
-                {markets.slice(0, 15).map((m) => (
+
+              {/* Category Filter Tabs */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {['all', 'crypto', 'stock', 'forex', 'commodity'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all cursor-pointer border ${selectedCategory === cat ? 'bg-white text-black border-white' : 'bg-neutral-900/50 text-neutral-400 border-neutral-800 hover:text-white'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+                {filteredMarkets.map((m) => (
                   <div 
                     key={m.symbol}
                     onClick={() => {
                       setSelectedSymbol(m.symbol);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
-                    className={`p-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer group ${m.symbol === selectedSymbol ? 'bg-white text-black border-white' : 'bg-neutral-900/30 border-neutral-800 hover:border-neutral-700'}`}
+                    className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer group ${m.symbol === selectedSymbol ? 'bg-white text-black border-white' : 'bg-neutral-900/30 border-neutral-800 hover:border-neutral-700'}`}
                   >
                     <div className="flex items-center gap-3">
                       <AssetLogo symbol={m.symbol} size="sm" />
