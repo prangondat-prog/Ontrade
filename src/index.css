@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: #000000;
+  }
+
+  body {
+    font-family: '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif';
+    color: #ffffff;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* OLED Smooth Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
+
+/* Glassmorphic Dark UI */
+.glass-surface {
+  background: rgba(20, 20, 20, 0.4);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-surface-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom Chart Effects */
+.chart-container iframe {
+  filter: grayscale(0.2) contrast(1.1);
+}
+
+@keyframes pulse-neon {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(216, 252, 34, 0.5)); }
+  50% { opacity: 0.8; filter: drop-shadow(0 0 15px rgba(216, 252, 34, 0.8)); }
+}
+
+.animate-neon {
+  animation: pulse-neon 2s infinite ease-in-out;
+}
